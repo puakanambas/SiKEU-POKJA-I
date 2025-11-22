@@ -1,0 +1,1260 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SiKEU POKJA I - TP-PKK KAB. KEP. ANAMBAS</title>
+    
+    <!-- Vue.js 3 -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Export Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+    <style>
+        body { font-family: 'Poppins', sans-serif; -webkit-tap-highlight-color: transparent; background-color: #F3F4F6; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        .btn-gradient-teal { background: linear-gradient(135deg, #0d9488 0%, #115e59 100%); }
+        .btn-gradient-rose { background: linear-gradient(135deg, #e11d48 0%, #be123c 100%); }
+
+        /* Login Animations */
+        .shake { animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both; }
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+        
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.75);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+        }
+
+        /* --- FIX: AVATAR UPLOAD STYLES --- */
+        .avatar-upload {
+            position: relative;
+            max-width: 150px;
+            margin: 0 auto 20px;
+        }
+        .avatar-edit {
+            position: absolute;
+            right: 10px;
+            z-index: 1;
+            top: 5px;
+        }
+        .avatar-preview {
+            width: 120px;
+            height: 120px;
+            position: relative;
+            border-radius: 100%;
+            border: 4px solid #F3F4F6;
+            box-shadow: 0px 2px 4px 0px rgba(0,0,0,0.1);
+            margin: 0 auto;
+            overflow: hidden;
+        }
+        .avatar-preview > div {
+            width: 100%;
+            height: 100%;
+            background-size: cover;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+<div id="app" class="max-w-md mx-auto min-h-screen bg-gray-50 relative shadow-2xl overflow-hidden flex flex-col">
+
+    <!-- ================= LOGIN SCREEN ================= -->
+    <transition enter-active-class="duration-500 ease-out" enter-from-class="opacity-0 translate-y-10" leave-active-class="duration-300 ease-in" leave-to-class="opacity-0 -translate-y-10">
+        <div v-if="!isAuthenticated" class="absolute inset-0 z-50 bg-gradient-to-br from-teal-700 to-emerald-800 flex flex-col items-center justify-center p-6">
+            
+            <!-- Decorative Circles -->
+            <div class="absolute top-0 left-0 w-64 h-64 bg-white/10 rounded-full -translate-x-1/2 -translate-y-1/2 blur-2xl"></div>
+            <div class="absolute bottom-0 right-0 w-64 h-64 bg-emerald-400/20 rounded-full translate-x-1/2 translate-y-1/2 blur-3xl"></div>
+
+            <div class="glass-panel w-full max-w-sm rounded-[2.5rem] p-8 shadow-2xl relative z-10 text-center">
+                <!-- Logo -->
+                <div class="w-24 h-24 bg-white rounded-full flex items-center justify-center shadow-xl mx-auto mb-5 border-[3px] border-teal-50 p-2">
+                    <img :src="appLogo" class="w-full h-full object-contain">
+                </div>
+
+                <h2 class="text-xl font-bold text-teal-900 leading-tight">SISTEM KEUANGAN</h2>
+                <h1 class="text-3xl font-extrabold text-teal-800 mb-2 tracking-tight">POKJA I</h1>
+                <p class="text-[10px] font-semibold text-teal-700 uppercase tracking-widest mb-8 border-b border-teal-200 pb-2 inline-block">TP-PKK Kab. Kep. Anambas</p>
+
+                <p class="text-xs text-gray-500 mb-4">Masukkan PIN Akses</p>
+
+                <!-- PIN Dots Indicator -->
+                <div class="flex justify-center gap-3 mb-6" :class="{'shake': isPinError}">
+                    <div v-for="i in 6" :key="i" 
+                         class="w-3.5 h-3.5 rounded-full transition-all duration-300 border border-teal-600"
+                         :class="enteredPin.length >= i ? 'bg-teal-600 scale-110' : 'bg-transparent'">
+                    </div>
+                </div>
+
+                <!-- Numpad -->
+                <div class="grid grid-cols-3 gap-4 px-2">
+                    <button v-for="n in [1,2,3,4,5,6,7,8,9]" :key="n" @click="handlePinInput(n)" 
+                        class="h-14 w-14 mx-auto rounded-full bg-white/60 hover:bg-white text-xl font-bold text-teal-800 shadow-sm hover:shadow-md transition flex items-center justify-center active:scale-90">
+                        {{ n }}
+                    </button>
+                    <div class="h-14 w-14"></div> <!-- Spacer -->
+                    <button @click="handlePinInput(0)" class="h-14 w-14 mx-auto rounded-full bg-white/60 hover:bg-white text-xl font-bold text-teal-800 shadow-sm transition flex items-center justify-center active:scale-90">0</button>
+                    <button @click="handleBackspace" class="h-14 w-14 mx-auto rounded-full text-teal-800 flex items-center justify-center hover:bg-red-50 hover:text-red-500 transition active:scale-90">
+                        <i class="fas fa-backspace text-xl"></i>
+                    </button>
+                </div>
+
+                <!-- COPYRIGHT FOOTER (Login) -->
+                <div class="mt-8 text-center border-t border-gray-200/50 pt-4">
+                     <p v-if="isDefaultPin" class="text-[9px] text-red-500 bg-red-50 px-2 py-1 rounded mt-3 inline-block border border-red-100">PIN Default: 123456</p>
+                </div>
+            </div>
+        </div>
+    </transition>
+
+    <!-- ================= MAIN APP DASHBOARD ================= -->
+    <div v-else class="flex flex-col h-screen animate-fade-in">
+        <!-- HEADER -->
+        <header class="bg-teal-600 text-white pt-12 pb-8 px-6 rounded-b-[2.5rem] shadow-lg relative z-10 flex-shrink-0 transition-all duration-300" :class="{'rounded-b-none pb-4 pt-10': activeTab === 'laporan'}">
+            <div class="flex justify-between items-start mb-3">
+                <div class="pr-2">
+                    <p class="text-teal-100 text-[10px] mb-0.5 uppercase tracking-widest font-medium opacity-80">Sistem Keuangan</p>
+                    <h1 class="text-2xl font-extrabold leading-none tracking-tight mb-1">POKJA I</h1>
+                    <div class="h-0.5 w-12 bg-teal-400 mb-1 rounded-full"></div>
+                    <p class="text-[10px] text-teal-50 font-medium tracking-wide">TP-PKK KAB. KEP. ANAMBAS</p>
+                </div>
+                <div class="flex gap-2 flex-shrink-0 mt-1">
+                    <!-- Settings Button -->
+                    <button @click="openChangePinModal" class="w-9 h-9 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20 transition text-teal-50 backdrop-blur-sm border border-white/10">
+                        <i class="fas fa-cog text-sm"></i>
+                    </button>
+                    <!-- Logout Button -->
+                    <button @click="logout" class="w-9 h-9 bg-white/10 rounded-full flex items-center justify-center hover:bg-red-500/80 hover:text-white transition text-teal-50 backdrop-blur-sm border border-white/10">
+                        <i class="fas fa-power-off text-sm"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Total Saldo Card -->
+            <div v-if="activeTab === 'home' || activeTab === 'transaksi'" class="absolute left-6 right-6 -bottom-10 bg-white text-gray-800 p-5 rounded-2xl shadow-xl flex justify-between items-center z-20 border-t border-gray-100 transform transition-all hover:scale-[1.02]">
+                <div>
+                    <p class="text-[10px] text-gray-400 uppercase tracking-wide font-bold mb-1">Total Saldo Kas</p>
+                    <h2 class="text-2xl font-bold text-teal-700 leading-none">{{ formatCurrency(saldo) }}</h2>
+                </div>
+                <div class="w-10 h-10 bg-teal-50 rounded-xl flex items-center justify-center text-teal-600 shadow-sm">
+                    <i class="fas fa-wallet text-lg"></i>
+                </div>
+            </div>
+        </header>
+
+        <!-- SPACER -->
+        <div v-if="activeTab === 'home' || activeTab === 'transaksi'" class="h-14 flex-shrink-0"></div>
+
+        <!-- MAIN CONTENT -->
+        <main class="px-5 py-4 flex-grow overflow-y-auto no-scrollbar pb-24">
+
+            <!-- TAB: HOME -->
+            <div v-if="activeTab === 'home'" class="space-y-6 animate-fade-in">
+                <!-- Quick Stats -->
+                <div class="grid grid-cols-2 gap-4 mt-2">
+                    <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-50 relative overflow-hidden group">
+                        <div class="absolute right-0 top-0 p-3 opacity-10 group-hover:scale-125 transition transform">
+                            <i class="fas fa-arrow-down text-4xl text-emerald-600"></i>
+                        </div>
+                        <span class="text-xs text-gray-400 font-medium">Pemasukan (Bln)</span>
+                        <p class="font-bold text-emerald-600 text-lg mt-1">{{ formatNumber(pemasukanBulanIni) }}</p>
+                    </div>
+                    <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-50 relative overflow-hidden group">
+                        <div class="absolute right-0 top-0 p-3 opacity-10 group-hover:scale-125 transition transform">
+                            <i class="fas fa-arrow-up text-4xl text-rose-600"></i>
+                        </div>
+                        <span class="text-xs text-gray-400 font-medium">Pengeluaran (Bln)</span>
+                        <p class="font-bold text-rose-600 text-lg mt-1">{{ formatNumber(pengeluaranBulanIni) }}</p>
+                    </div>
+                </div>
+
+                <!-- Menu Pintas -->
+                <div>
+                    <h3 class="font-bold text-gray-700 mb-3 text-sm px-1 flex items-center gap-2">
+                        <i class="fas fa-bolt text-yellow-500"></i> Aksi Cepat
+                    </h3>
+                    <div class="flex gap-3">
+                        <button @click="openModal('in')" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white p-4 rounded-2xl shadow-lg shadow-emerald-200 transition transform active:scale-95 flex flex-col items-center gap-2 group">
+                            <div class="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center group-hover:bg-white/30 transition">
+                                <i class="fas fa-plus text-xl"></i>
+                            </div>
+                            <span class="text-xs font-bold">Pemasukan</span>
+                        </button>
+                        <button @click="openModal('out')" class="flex-1 bg-rose-600 hover:bg-rose-700 text-white p-4 rounded-2xl shadow-lg shadow-rose-200 transition transform active:scale-95 flex flex-col items-center gap-2 group">
+                            <div class="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center group-hover:bg-white/30 transition">
+                                <i class="fas fa-minus text-xl"></i>
+                            </div>
+                            <span class="text-xs font-bold">Pengeluaran</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Riwayat Terakhir -->
+                <div>
+                    <div class="flex justify-between items-center mb-3 px-1">
+                        <h3 class="font-bold text-gray-700 text-sm">Terbaru</h3>
+                        <button @click="activeTab = 'transaksi'" class="text-teal-600 text-xs font-medium bg-teal-50 px-2 py-1 rounded-lg">Lihat Semua</button>
+                    </div>
+                    <div class="space-y-3">
+                        <div v-for="t in recentTransactions" :key="t.id" @click="openEditModal(t)" class="bg-white p-3 rounded-2xl shadow-sm border border-gray-50 flex justify-between items-center active:bg-gray-50 transition cursor-pointer">
+                            <div class="flex items-center gap-3">
+                                <div :class="t.type === 'in' ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'" class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 text-sm relative">
+                                    <i :class="t.type === 'in' ? 'fas fa-arrow-down' : 'fas fa-shopping-bag'"></i>
+                                    <!-- Indikator Ada Foto -->
+                                    <div v-if="t.proofPhoto" class="absolute -top-1 -right-1 w-4 h-4 bg-blue-500 rounded-full border-2 border-white flex items-center justify-center">
+                                        <i class="fas fa-camera text-[8px] text-white"></i>
+                                    </div>
+                                </div>
+                                <div class="overflow-hidden">
+                                    <p class="font-semibold text-sm text-gray-800 truncate w-32 sm:w-40">{{ t.description }}</p>
+                                    <p class="text-[10px] text-gray-400">{{ formatDate(t.date) }} • #{{ t.id.toString().slice(-4) }}</p>
+                                </div>
+                            </div>
+                            <div class="text-right flex flex-col items-end">
+                                <span :class="t.type === 'in' ? 'text-emerald-600' : 'text-rose-600'" class="font-bold text-sm">
+                                    {{ t.type === 'in' ? '+' : '-' }} {{ formatNumber(t.amount) }}
+                                </span>
+                                <span class="text-[10px] bg-gray-100 text-gray-500 px-1.5 rounded mt-1">{{ t.category }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- COPYRIGHT BADGE (Main App) -->
+                <div class="mt-8 mb-4 text-center">
+                    <div class="inline-flex items-center justify-center gap-1.5 px-4 py-1.5 rounded-full bg-white/60 border border-white shadow-sm backdrop-blur-sm">
+                        <i class="fas fa-code text-[10px] text-teal-500"></i>
+                        <span class="text-[9px] text-gray-400 font-medium">
+                            SiKEU POKJA I &copy; 2025
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB: TRANSAKSI -->
+            <div v-if="activeTab === 'transaksi'" class="space-y-4 animate-fade-in">
+                <!-- Search & Filter -->
+                <div class="sticky top-0 z-10 bg-gray-50/95 backdrop-blur pt-2 pb-2 space-y-2">
+                    <div class="relative">
+                        <i class="fas fa-search absolute left-3 top-3.5 text-gray-400 text-xs"></i>
+                        <input v-model="searchQuery" type="text" placeholder="Cari transaksi POKJA I..." class="w-full pl-9 pr-4 py-3 rounded-xl border-none shadow-sm bg-white text-sm outline-none focus:ring-2 focus:ring-teal-500">
+                    </div>
+                    <div class="flex gap-2 overflow-x-auto no-scrollbar">
+                        <button @click="filterType = 'all'" :class="filterType === 'all' ? 'bg-teal-600 text-white shadow-md' : 'bg-white text-gray-500'" class="px-4 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition">Semua</button>
+                        <button @click="filterType = 'in'" :class="filterType === 'in' ? 'bg-emerald-600 text-white shadow-md' : 'bg-white text-gray-500'" class="px-4 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition">Pemasukan</button>
+                        <button @click="filterType = 'out'" :class="filterType === 'out' ? 'bg-rose-600 text-white shadow-md' : 'bg-white text-gray-500'" class="px-4 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition">Pengeluaran</button>
+                    </div>
+                </div>
+
+                <div v-if="filteredTransactions.length === 0" class="text-center py-16">
+                    <div class="w-20 h-20 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-3 text-gray-400 text-3xl">
+                        <i class="fas fa-search"></i>
+                    </div>
+                    <p class="text-gray-400 text-sm">Data tidak ditemukan</p>
+                </div>
+
+                <div class="space-y-3">
+                    <div v-for="t in filteredTransactions" :key="t.id" @click="openEditModal(t)" class="bg-white p-4 rounded-2xl shadow-sm flex justify-between items-start relative cursor-pointer border border-transparent hover:border-teal-500 transition duration-200">
+                        <div class="flex gap-3">
+                            <div class="flex flex-col items-center justify-center w-11 h-11 bg-gray-50 rounded-xl text-center flex-shrink-0 border border-gray-100 relative">
+                                <span class="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">{{ getMonthNameShort(new Date(t.date).getMonth()) }}</span>
+                                <span class="text-lg font-bold text-gray-700 leading-none -mt-0.5">{{ new Date(t.date).getDate() }}</span>
+                                <!-- Indikator Ada Foto -->
+                                <div v-if="t.proofPhoto" class="absolute -top-1 -right-1 w-4 h-4 bg-blue-500 rounded-full border-2 border-white flex items-center justify-center shadow-sm">
+                                    <i class="fas fa-camera text-[8px] text-white"></i>
+                                </div>
+                            </div>
+                            <div>
+                                <p class="font-semibold text-sm text-gray-800 line-clamp-1">{{ t.description }}</p>
+                                <div class="flex items-center gap-2 mt-1">
+                                    <span class="text-[10px] px-2 py-0.5 rounded-md" 
+                                        :class="t.type === 'in' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-rose-50 text-rose-700 border border-rose-100'">
+                                        {{ t.category }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex flex-col items-end">
+                            <p :class="t.type === 'in' ? 'text-emerald-600' : 'text-rose-600'" class="font-bold text-sm">
+                                {{ t.type === 'in' ? '+' : '-' }} {{ formatNumber(t.amount) }}
+                            </p>
+                            <i class="fas fa-chevron-right text-gray-300 text-xs mt-2"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB: ANGGOTA -->
+            <div v-if="activeTab === 'anggota'" class="space-y-5 animate-fade-in">
+                <div class="flex justify-between items-end px-1 mb-2">
+                    <div>
+                        <h2 class="text-xl font-bold text-gray-800">Anggota Pokja I</h2>
+                        <p class="text-xs text-gray-500">{{ members.length }} Orang Terdaftar</p>
+                    </div>
+                    <button @click="openMemberModal()" class="bg-teal-600 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-lg shadow-teal-200 hover:bg-teal-700 transition flex items-center gap-2">
+                        <i class="fas fa-plus"></i> Tambah
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 gap-3">
+                    <div v-for="(member, index) in members" :key="member.id" @click="openMemberModal(member)" class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between cursor-pointer hover:shadow-md transition">
+                        <div class="flex items-center gap-4">
+                            <!-- Avatar Logic -->
+                            <div class="w-12 h-12 rounded-full overflow-hidden border-2 border-gray-100 flex-shrink-0">
+                                <img v-if="member.photo" :src="member.photo" class="w-full h-full object-cover">
+                                <div v-else class="w-full h-full bg-gradient-to-br from-orange-100 to-yellow-100 text-orange-500 flex items-center justify-center font-bold text-sm">
+                                    {{ getInitials(member.name) }}
+                                </div>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-gray-800 text-sm">{{ member.name }}</h4>
+                                <p class="text-xs text-teal-600 font-medium bg-teal-50 px-2 py-0.5 rounded-md inline-block mt-1">{{ member.role }}</p>
+                            </div>
+                        </div>
+                        <button class="w-8 h-8 rounded-full bg-gray-50 text-gray-400 flex items-center justify-center">
+                            <i class="fas fa-pen text-xs"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB: LAPORAN -->
+            <div v-if="activeTab === 'laporan'" class="space-y-6 animate-fade-in mt-4">
+                <div class="text-center mb-4">
+                    <h2 class="text-xl font-bold text-gray-800">Cetak Laporan</h2>
+                    <p class="text-xs text-gray-400">Tentukan rentang tanggal laporan Pokja I</p>
+                </div>
+                
+                <!-- Card Input Range -->
+                <div class="bg-white p-6 rounded-[2rem] shadow-sm border border-gray-100 space-y-5">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2 block">Dari Tanggal</label>
+                            <div class="relative bg-gray-50 rounded-xl overflow-hidden border border-gray-200">
+                                <input v-model="reportStartDate" type="date" class="w-full p-3.5 bg-transparent text-gray-700 font-medium text-sm outline-none z-10 relative">
+                                <i class="fas fa-calendar absolute right-4 top-4 text-gray-400 z-0"></i>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2 block">Sampai Dengan Tanggal</label>
+                            <div class="relative bg-gray-50 rounded-xl overflow-hidden border border-gray-200">
+                                <input v-model="reportEndDate" type="date" class="w-full p-3.5 bg-transparent text-gray-700 font-medium text-sm outline-none z-10 relative">
+                                <i class="fas fa-calendar absolute right-4 top-4 text-gray-400 z-0"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Info Box -->
+                    <div class="bg-teal-50 p-4 rounded-2xl flex items-start gap-3 border border-teal-100">
+                        <div class="bg-teal-100 rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0 mt-0.5">
+                            <i class="fas fa-info text-[10px] text-teal-700"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-bold text-teal-800 text-xs mb-1">Info Periode</h4>
+                            <p class="text-[11px] text-teal-700 leading-relaxed">
+                                Data yang dicetak adalah transaksi mulai dari <span class="font-bold">{{ formatDateFull(reportStartDate) }}</span> sampai <span class="font-bold">{{ formatDateFull(reportEndDate) }}</span>.
+                            </p>
+                            <p class="text-[10px] text-teal-600 mt-1 italic">Total Data: {{ transactionsForReport.length }} Transaksi</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="space-y-3">
+                    <button @click="exportPDF" :disabled="transactionsForReport.length === 0" class="w-full bg-[#DC2626] text-white p-4 rounded-2xl shadow-lg shadow-red-100 hover:bg-red-700 transition flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed">
+                        <i class="fas fa-file-pdf text-xl"></i>
+                        <span class="font-bold text-sm">Download PDF (Laporan)</span>
+                    </button>
+
+                    <button @click="exportExcel" :disabled="transactionsForReport.length === 0" class="w-full bg-[#10B981] text-white p-4 rounded-2xl shadow-lg shadow-emerald-100 hover:bg-emerald-700 transition flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed">
+                        <i class="fas fa-file-excel text-xl"></i>
+                        <span class="font-bold text-sm">Download Excel</span>
+                    </button>
+                </div>
+
+                <div v-if="transactionsForReport.length === 0" class="text-center text-xs text-rose-500 mt-2">
+                    <i class="fas fa-exclamation-circle mr-1"></i> Tidak ada transaksi pada rentang tanggal ini.
+                </div>
+            </div>
+
+        </main>
+
+        <!-- BOTTOM NAV -->
+        <nav class="fixed bottom-0 w-full max-w-md bg-white/95 backdrop-blur-lg border-t border-gray-200 px-6 py-3 flex justify-between items-center z-40">
+            <button @click="activeTab = 'home'" :class="activeTab === 'home' ? 'active' : 'text-gray-400'" class="nav-item flex flex-col items-center gap-1 transition duration-300">
+                <i class="fas fa-home text-xl"></i>
+                <span class="text-[10px]">Beranda</span>
+            </button>
+            <button @click="activeTab = 'transaksi'" :class="activeTab === 'transaksi' ? 'active' : 'text-gray-400'" class="nav-item flex flex-col items-center gap-1 transition duration-300">
+                <i class="fas fa-exchange-alt text-xl"></i>
+                <span class="text-[10px]">Transaksi</span>
+            </button>
+            <div class="w-8"></div>
+            <button @click="activeTab = 'anggota'" :class="activeTab === 'anggota' ? 'active' : 'text-gray-400'" class="nav-item flex flex-col items-center gap-1 transition duration-300">
+                <i class="fas fa-users text-xl"></i>
+                <span class="text-[10px]">Anggota</span>
+            </button>
+            <button @click="activeTab = 'laporan'" :class="activeTab === 'laporan' ? 'active' : 'text-gray-400'" class="nav-item flex flex-col items-center gap-1 transition duration-300">
+                <i class="fas fa-file-alt text-xl"></i>
+                <span class="text-[10px]">Laporan</span>
+            </button>
+        </nav>
+
+    </div> <!-- End Main Dashboard -->
+
+
+    <!-- MODAL TRANSAKSI (ADD & EDIT) -->
+    <transition name="slide-up">
+        <div v-if="isModalOpen" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+            <div class="bg-white w-full max-w-md p-6 rounded-3xl shadow-2xl max-h-[90vh] overflow-y-auto">
+                <div class="flex justify-between items-center mb-6">
+                    <div>
+                        <h3 class="text-lg font-bold text-gray-800">{{ isEditMode ? 'Detail Transaksi' : (formType === 'in' ? 'Tambah Pemasukan' : 'Tambah Pengeluaran') }}</h3>
+                        <p class="text-xs text-gray-400" v-if="isEditMode">ID: #{{ form.id.toString().slice(-6) }}</p>
+                    </div>
+                    <button @click="closeModal" class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-200">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <form @submit.prevent="submitTransaction" class="space-y-4">
+                    <!-- Kategori -->
+                    <div>
+                        <label class="text-xs font-bold text-gray-500 uppercase mb-2 block">Kategori</label>
+                        <div class="flex flex-wrap gap-2">
+                            <button type="button" v-for="cat in (formType === 'in' ? categoriesIn : categoriesOut)" 
+                                @click="form.category = cat"
+                                :class="form.category === cat ? (formType === 'in' ? 'bg-emerald-600 text-white shadow-md' : 'bg-rose-600 text-white shadow-md') : 'bg-gray-100 text-gray-600'"
+                                class="px-3 py-2 rounded-lg text-xs font-medium transition border border-transparent">
+                                {{ cat }}
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Input Dinamis -->
+                    <div v-if="formType === 'in' && form.category.includes('Iuran')">
+                        <div class="mb-4">
+                            <label class="text-xs font-bold text-gray-500 uppercase mb-1 block">Pilih Anggota</label>
+                            <div class="relative">
+                                <select v-model="form.tempMemberName" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 pl-4 text-sm focus:ring-2 focus:ring-teal-500 outline-none appearance-none" :required="!isEditMode">
+                                    <option disabled value="">Pilih Nama...</option>
+                                    <option v-for="m in members" :value="m.name">{{ m.name }} ({{ m.role }})</option>
+                                </select>
+                                <i class="fas fa-chevron-down absolute right-4 top-4 text-gray-400 text-xs pointer-events-none"></i>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-gray-500 uppercase mb-1 block">Uraian / Catatan</label>
+                            <input v-model="form.tempUraian" type="text" placeholder="Contoh: Iuran Bulan Mei" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-teal-500 outline-none">
+                        </div>
+                    </div>
+                    <div v-else>
+                        <label class="text-xs font-bold text-gray-500 uppercase mb-1 block">Uraian / Keterangan</label>
+                        <input v-model="form.description" type="text" placeholder="Contoh: Beli Snack..." class="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-teal-500 outline-none" required>
+                    </div>
+
+                    <!-- Tanggal & Nominal -->
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="text-xs font-bold text-gray-500 uppercase mb-1 block">Tanggal</label>
+                            <input v-model="form.date" type="date" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm outline-none" required>
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-gray-500 uppercase mb-1 block">Nominal (Rp)</label>
+                            <input v-model.number="form.amount" type="number" placeholder="0" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm outline-none font-bold text-gray-800" required>
+                        </div>
+                    </div>
+
+                    <!-- FOTO BUKTI / NOTA (NEW FEATURE) -->
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Bukti Foto / Nota (Opsional)</label>
+                        <div class="flex items-center gap-4">
+                            <!-- Preview Image -->
+                            <div v-if="form.proofPhoto" class="relative w-24 h-24 rounded-xl overflow-hidden border border-gray-200 group shadow-sm">
+                                <img :src="form.proofPhoto" class="w-full h-full object-cover" alt="Bukti Transaksi">
+                                <!-- Delete Overlay -->
+                                <button @click="removeProof" type="button" class="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition text-white">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                            
+                            <!-- Upload Button -->
+                            <label class="w-24 h-24 rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-gray-400 cursor-pointer hover:border-teal-500 hover:text-teal-500 hover:bg-teal-50 transition bg-gray-50">
+                                <i class="fas fa-camera text-xl mb-1"></i>
+                                <span class="text-[10px]">Ambil/Upload</span>
+                                <input type="file" accept="image/*" @change="handleProofUpload" class="hidden">
+                            </label>
+                        </div>
+                        <p class="text-[10px] text-gray-400 mt-2 italic">* Foto akan otomatis dikompres agar aplikasi ringan.</p>
+                    </div>
+
+                    <button type="submit" class="w-full py-3.5 rounded-xl text-white font-bold shadow-lg mt-4 transition transform active:scale-95"
+                        :class="formType === 'in' ? 'btn-gradient-teal shadow-teal-200' : 'btn-gradient-rose shadow-rose-200'">
+                        {{ isEditMode ? 'Simpan Perubahan' : 'Simpan Data' }}
+                    </button>
+
+                    <!-- Action Buttons in Edit Mode -->
+                    <div v-if="isEditMode" class="grid grid-cols-2 gap-3 mt-2">
+                        <button @click="printReceipt(form)" type="button" class="w-full py-3 rounded-xl bg-blue-50 text-blue-600 font-bold hover:bg-blue-100 text-sm transition flex items-center justify-center gap-2">
+                            <i class="fas fa-print"></i> Cetak Struk
+                        </button>
+                        <button @click="deleteTransaction" type="button" class="w-full py-3 rounded-xl bg-red-50 text-red-500 font-bold hover:bg-red-100 text-sm transition flex items-center justify-center gap-2">
+                            <i class="fas fa-trash"></i> Hapus
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </transition>
+
+    <!-- MODAL ANGGOTA -->
+    <transition name="slide-up">
+        <div v-if="isMemberModalOpen" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+            <div class="bg-white w-full max-w-md p-6 rounded-3xl shadow-2xl animate-slide-up">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-bold text-gray-800">{{ isEditMemberMode ? 'Edit Anggota' : 'Anggota Baru' }}</h3>
+                    <button @click="isMemberModalOpen = false" class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-500">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <form @submit.prevent="submitMember" class="space-y-4">
+                    <div class="avatar-upload mb-6">
+                        <div class="avatar-edit">
+                            <input type='file' id="imageUpload" accept=".png, .jpg, .jpeg" @change="onFileChange" class="hidden" />
+                            <label for="imageUpload" class="w-8 h-8 rounded-full bg-teal-600 flex items-center justify-center cursor-pointer shadow-md hover:bg-teal-700 transition">
+                                <i class="fas fa-camera text-white text-xs"></i>
+                            </label>
+                        </div>
+                        <div class="avatar-preview">
+                            <div v-if="memberForm.photo" :style="{ 'background-image': 'url(' + memberForm.photo + ')' }"></div>
+                            <div v-else class="w-full h-full bg-gray-100 flex items-center justify-center text-gray-400">
+                                <i class="fas fa-user text-3xl"></i>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="text-xs font-bold text-gray-500 uppercase mb-1 block">Nama Lengkap</label>
+                        <input v-model="memberForm.name" type="text" placeholder="Nama Anggota..." class="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-teal-500 outline-none" required>
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-gray-500 uppercase mb-1 block">Jabatan Pokja</label>
+                        <input v-model="memberForm.role" type="text" placeholder="Contoh: Anggota / Sekretaris" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-teal-500 outline-none" required>
+                    </div>
+
+                    <button type="submit" class="w-full py-3.5 rounded-xl text-white font-bold shadow-lg mt-4 btn-gradient-teal shadow-teal-200 transition transform active:scale-95">
+                        {{ isEditMemberMode ? 'Update Anggota' : 'Simpan Anggota' }}
+                    </button>
+
+                    <button v-if="isEditMemberMode" @click="deleteMember" type="button" class="w-full py-3 rounded-xl text-red-500 font-bold hover:bg-red-50 text-sm transition">
+                        <i class="fas fa-trash mr-2"></i> Hapus Anggota
+                    </button>
+                </form>
+            </div>
+        </div>
+    </transition>
+
+    <!-- MODAL GANTI PIN -->
+    <transition name="slide-up">
+        <div v-if="isChangePinModalOpen" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+            <div class="bg-white w-full max-w-sm p-6 rounded-3xl shadow-2xl animate-slide-up">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-bold text-gray-800">Pengaturan PIN</h3>
+                    <button @click="isChangePinModalOpen = false" class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-500">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <form @submit.prevent="updatePin" class="space-y-4">
+                    <div>
+                        <label class="text-xs font-bold text-gray-500 uppercase mb-1 block">PIN Lama</label>
+                        <input v-model="pinForm.old" type="password" maxlength="6" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-center tracking-widest font-bold focus:ring-2 focus:ring-teal-500 outline-none" required>
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-gray-500 uppercase mb-1 block">PIN Baru (6 Angka)</label>
+                        <input v-model="pinForm.new" type="password" maxlength="6" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-center tracking-widest font-bold focus:ring-2 focus:ring-teal-500 outline-none" required>
+                    </div>
+                     <div>
+                        <label class="text-xs font-bold text-gray-500 uppercase mb-1 block">Konfirmasi PIN Baru</label>
+                        <input v-model="pinForm.confirm" type="password" maxlength="6" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-center tracking-widest font-bold focus:ring-2 focus:ring-teal-500 outline-none" required>
+                    </div>
+
+                    <button type="submit" class="w-full py-3.5 rounded-xl text-white font-bold shadow-lg mt-4 btn-gradient-teal shadow-teal-200 transition transform active:scale-95">
+                        Simpan PIN Baru
+                    </button>
+
+                    <p class="text-[10px] text-center text-gray-400 italic mt-2 leading-tight">Catatan: Jika Anda menghapus history/cache browser, PIN akan kembali ke standar (123456).</p>
+                </form>
+            </div>
+        </div>
+    </transition>
+
+    <div id="qr-code-container" style="display: none;"></div>
+
+</div>
+
+<style>
+    .slide-up-enter-active, .slide-up-leave-active { transition: transform 0.3s ease, opacity 0.3s ease; }
+    .slide-up-enter-from, .slide-up-leave-to { transform: translateY(100%); opacity: 0; }
+    .fade-in { animation: fadeIn 0.5s ease-out; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+</style>
+
+<script>
+    const { createApp, ref, computed, onMounted } = Vue;
+    const { jsPDF } = window.jspdf;
+
+    const appLogo = "https://iili.io/f3jtDkQ.md.png";
+
+    const getBase64ImageFromURL = (url) => {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            img.crossOrigin = "Anonymous";
+            img.src = url;
+            img.onload = () => {
+                const canvas = document.createElement("canvas");
+                canvas.width = img.width;
+                canvas.height = img.height;
+                const ctx = canvas.getContext("2d");
+                ctx.drawImage(img, 0, 0);
+                resolve(canvas.toDataURL("image/png"));
+            };
+            img.onerror = (error) => reject(error);
+        });
+    };
+
+    const compressImage = (base64Str, maxWidth = 600, quality = 0.6) => {
+        return new Promise((resolve) => {
+            const img = new Image();
+            img.src = base64Str;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+                if (width > maxWidth) { height *= maxWidth / width; width = maxWidth; }
+                canvas.width = width; canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                resolve(canvas.toDataURL('image/jpeg', quality));
+            };
+        });
+    };
+
+    createApp({
+        setup() {
+            // --- AUTH STATE ---
+            const isAuthenticated = ref(false);
+            const enteredPin = ref("");
+            const storedPin = ref("123456"); // Default
+            const isPinError = ref(false);
+            
+            // Change PIN State
+            const isChangePinModalOpen = ref(false);
+            const pinForm = ref({ old: '', new: '', confirm: '' });
+
+            // --- STATE UTAMA ---
+            const activeTab = ref('home');
+            const isModalOpen = ref(false);
+            const isMemberModalOpen = ref(false);
+            
+            // State Transaksi
+            const isEditMode = ref(false);
+            const formType = ref('in');
+            const form = ref({ 
+                id: null, date: '', category: '', 
+                description: '', amount: null,
+                tempMemberName: '', tempUraian: '', proofPhoto: null 
+            });
+            
+            const isEditMemberMode = ref(false);
+            const memberForm = ref({ id: null, name: '', role: '', photo: null });
+            
+            const searchQuery = ref('');
+            const filterType = ref('all');
+
+            // State Laporan
+            const today = new Date();
+            const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+            const toInputDate = (date) => date.toISOString().slice(0, 10);
+            const reportStartDate = ref(toInputDate(firstDayOfMonth));
+            const reportEndDate = ref(toInputDate(today));
+
+            // --- DATA DUMMY ---
+            const members = ref([
+                { id: 1, name: 'Ibu Suryani', role: 'Ketua Pokja I', photo: null },
+                { id: 2, name: 'Ibu Ratna', role: 'Sekretaris', photo: null },
+            ]);
+            
+            const transactions = ref([
+                { id: 1716345129543, date: '2025-05-21', type: 'in', category: 'Iuran Wajib', description: 'Ibu Suryani (Bulan Mei)', amount: 20000, proofPhoto: null },
+                { id: 1716256782109, date: '2025-05-20', type: 'out', category: 'Konsumsi', description: 'Snack Rapat', amount: 50000, proofPhoto: null },
+            ]);
+
+            const categoriesIn = ['Iuran Wajib', 'Iuran Sukarela', 'Sumbangan', 'UP2K', 'Lainnya'];
+            const categoriesOut = ['Konsumsi', 'ATK', 'Transport', 'Santunan', 'Lainnya'];
+
+            // --- COMPUTED PROPERTIES ---
+            const saldo = computed(() => transactions.value.reduce((acc, t) => t.type === 'in' ? acc + t.amount : acc - t.amount, 0));
+            
+            const pemasukanBulanIni = computed(() => {
+                const now = new Date();
+                return transactions.value
+                    .filter(t => t.type === 'in' && new Date(t.date).getMonth() === now.getMonth())
+                    .reduce((acc, t) => acc + t.amount, 0);
+            });
+
+            const pengeluaranBulanIni = computed(() => {
+                const now = new Date();
+                return transactions.value
+                    .filter(t => t.type === 'out' && new Date(t.date).getMonth() === now.getMonth())
+                    .reduce((acc, t) => acc + t.amount, 0);
+            });
+
+            const filteredTransactions = computed(() => {
+                return transactions.value.filter(t => {
+                    const matchSearch = t.description.toLowerCase().includes(searchQuery.value.toLowerCase()) || t.category.toLowerCase().includes(searchQuery.value.toLowerCase());
+                    const matchType = filterType.value === 'all' || t.type === filterType.value;
+                    return matchSearch && matchType;
+                }).sort((a, b) => new Date(b.date) - new Date(a.date));
+            });
+
+            const recentTransactions = computed(() => [...transactions.value].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 3));
+
+            const transactionsForReport = computed(() => {
+                const start = new Date(reportStartDate.value);
+                start.setHours(0, 0, 0, 0);
+                const end = new Date(reportEndDate.value);
+                end.setHours(23, 59, 59, 999);
+
+                return transactions.value.filter(t => {
+                    const tDate = new Date(t.date);
+                    return tDate >= start && tDate <= end;
+                }).sort((a, b) => new Date(a.date) - new Date(b.date)); 
+            });
+            
+            const isDefaultPin = computed(() => storedPin.value === '123456');
+
+            // --- AUTH METHODS ---
+            const loadPin = () => {
+                const saved = localStorage.getItem('pkk_app_pin');
+                if(saved) storedPin.value = saved;
+            }
+
+            const handlePinInput = (num) => {
+                if (enteredPin.value.length < 6) {
+                    enteredPin.value += num;
+                    if (enteredPin.value.length === 6) {
+                        checkPin();
+                    }
+                }
+            };
+
+            const handleBackspace = () => {
+                enteredPin.value = enteredPin.value.slice(0, -1);
+                isPinError.value = false;
+            };
+
+            const checkPin = () => {
+                if (enteredPin.value === storedPin.value) {
+                    setTimeout(() => {
+                        isAuthenticated.value = true;
+                    }, 300);
+                } else {
+                    isPinError.value = true;
+                    setTimeout(() => {
+                        enteredPin.value = "";
+                        isPinError.value = false;
+                    }, 500);
+                }
+            };
+
+            const logout = () => {
+                isAuthenticated.value = false;
+                enteredPin.value = "";
+            };
+
+            // --- CHANGE PIN LOGIC ---
+            const openChangePinModal = () => {
+                pinForm.value = { old: '', new: '', confirm: '' };
+                isChangePinModalOpen.value = true;
+            };
+
+            const updatePin = () => {
+                if (pinForm.value.old !== storedPin.value) {
+                    alert("PIN Lama salah!");
+                    return;
+                }
+                if (pinForm.value.new.length !== 6 || isNaN(pinForm.value.new)) {
+                    alert("PIN Baru harus 6 angka!");
+                    return;
+                }
+                if (pinForm.value.new !== pinForm.value.confirm) {
+                    alert("Konfirmasi PIN tidak cocok!");
+                    return;
+                }
+
+                storedPin.value = pinForm.value.new;
+                localStorage.setItem('pkk_app_pin', pinForm.value.new);
+                alert("PIN Berhasil diubah!");
+                isChangePinModalOpen.value = false;
+            };
+
+
+            // --- METHODS UTILITY ---
+            const formatCurrency = (val) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(val);
+            const formatNumber = (val) => new Intl.NumberFormat('id-ID').format(val);
+            const formatDate = (dateStr) => new Date(dateStr).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+            const formatDateFull = (dateStr) => new Date(dateStr).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+            const getMonthNameShort = (idx) => ["JAN", "FEB", "MAR", "APR", "MEI", "JUN", "JUL", "AGU", "SEP", "OKT", "NOV", "DES"][idx];
+            const getInitials = (name) => name.split(' ').slice(0,2).map(n => n[0]).join('').toUpperCase();
+
+            const openModal = (type) => {
+                isEditMode.value = false;
+                formType.value = type;
+                form.value = { 
+                    id: null, date: new Date().toISOString().substr(0, 10), 
+                    category: type === 'in' ? categoriesIn[0] : categoriesOut[0], 
+                    description: '', amount: null,
+                    tempMemberName: '', tempUraian: '', proofPhoto: null 
+                };
+                isModalOpen.value = true;
+            };
+
+            const openEditModal = (transaction) => {
+                isEditMode.value = true;
+                formType.value = transaction.type;
+                form.value = { ...transaction, tempMemberName: '', tempUraian: '' }; 
+                if(form.value.proofPhoto === undefined) form.value.proofPhoto = null;
+                isModalOpen.value = true;
+            };
+
+            const closeModal = () => isModalOpen.value = false;
+
+            const handleProofUpload = (event) => {
+                const file = event.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = async (e) => {
+                    try {
+                        const compressed = await compressImage(e.target.result);
+                        form.value.proofPhoto = compressed;
+                    } catch (error) {
+                        console.error("Gagal kompresi gambar", error);
+                        alert("Gagal memproses gambar. Silakan coba lagi.");
+                    }
+                };
+                reader.readAsDataURL(file);
+            };
+
+            const removeProof = () => {
+                if(confirm("Hapus foto bukti ini?")) {
+                    form.value.proofPhoto = null;
+                }
+            };
+
+            const submitTransaction = () => {
+                let finalDescription = form.value.description;
+                if (formType.value === 'in' && form.value.category.includes('Iuran')) {
+                    if (!isEditMode.value) {
+                        finalDescription = form.value.tempMemberName;
+                        if (form.value.tempUraian) {
+                            finalDescription += ` (${form.value.tempUraian})`;
+                        }
+                    }
+                }
+
+                const transactionData = {
+                    id: isEditMode.value ? form.value.id : Date.now(),
+                    date: form.value.date,
+                    category: form.value.category,
+                    description: finalDescription,
+                    amount: form.value.amount,
+                    type: formType.value,
+                    proofPhoto: form.value.proofPhoto 
+                };
+
+                if (isEditMode.value) {
+                    const index = transactions.value.findIndex(t => t.id === form.value.id);
+                    if (index !== -1) transactions.value[index] = transactionData;
+                } else {
+                    transactions.value.unshift(transactionData);
+                }
+                closeModal();
+                saveData();
+            };
+
+            const deleteTransaction = () => {
+                if(confirm('Yakin hapus transaksi ini?')) {
+                    transactions.value = transactions.value.filter(t => t.id !== form.value.id);
+                    closeModal();
+                    saveData();
+                }
+            };
+
+            const generateQRCodeDataURL = (text) => {
+                return new Promise((resolve, reject) => {
+                    const container = document.getElementById('qr-code-container');
+                    container.innerHTML = ''; 
+                    const qrcode = new QRCode(container, {
+                        text: text, width: 100, height: 100,
+                        colorDark : "#000000", colorLight : "#ffffff",
+                        correctLevel : QRCode.CorrectLevel.H
+                    });
+                    setTimeout(() => {
+                        const img = container.querySelector('img');
+                        if (img && img.src) resolve(img.src);
+                        else {
+                            const canvas = container.querySelector('canvas');
+                            if(canvas) resolve(canvas.toDataURL('image/png'));
+                            else reject("QR Code generation failed");
+                        }
+                    }, 100);
+                });
+            };
+
+            const printReceipt = async (t) => {
+                const hasProof = t.proofPhoto ? true : false;
+                const paperHeight = hasProof ? 180 : 135;
+                
+                const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: [80, paperHeight] });
+                const themeColor = t.type === 'in' ? '#059669' : '#be123c'; 
+                const bgColor = '#f3f4f6'; const cardColor = '#ffffff'; const textColor = '#374151';
+
+                doc.setFillColor(bgColor); doc.rect(0, 0, 80, paperHeight, 'F');
+                const cardX = 4; const cardY = 4; const cardWidth = 72; 
+                const cardHeight = paperHeight - 8;
+                
+                doc.setFillColor(cardColor); doc.setDrawColor('#e5e7eb'); doc.setLineWidth(0.1);
+                doc.roundedRect(cardX, cardY, cardWidth, cardHeight, 6, 6, 'FD');
+
+                // Header Receipt
+                const headerHeight = 30;
+                doc.setFillColor(themeColor);
+                doc.roundedRect(cardX, cardY, cardWidth, headerHeight, 6, 6, 'F');
+                doc.rect(cardX, cardY + headerHeight - 6, cardWidth, 6, 'F');
+                
+                try {
+                    const logoBase64 = await getBase64ImageFromURL(appLogo);
+                    const logoSize = 12;
+                    doc.addImage(logoBase64, 'PNG', cardX + (cardWidth/2) - (logoSize/2), cardY + 3, logoSize, logoSize);
+                } catch (e) {
+                    doc.setFillColor('#ffffff');
+                    doc.circle(cardX + cardWidth / 2, cardY + 9, 6, 'FD');
+                }
+
+                doc.setTextColor('#ffffff'); doc.setFont("helvetica", "bold"); doc.setFontSize(8.5);
+                doc.text("BUKTI TRANSAKSI", cardX + cardWidth / 2, cardY + 20, { align: "center" });
+                doc.setFont("helvetica", "normal"); doc.setFontSize(7.5);
+                // UPDATED NAME
+                doc.text("SiKEU POKJA I TP-PKK KAB. KEP. ANAMBAS", cardX + cardWidth / 2, cardY + 25, { align: "center" });
+
+                let y = cardY + headerHeight + 10; doc.setTextColor(textColor);
+
+                doc.setFontSize(20); doc.setFont("helvetica", "bold"); doc.setTextColor(themeColor);
+                const typeSign = t.type === 'in' ? '+' : '-';
+                doc.text(`${typeSign} ${formatCurrency(t.amount)}`, cardX + cardWidth / 2, y, { align: "center" });
+                
+                y += 6; 
+                doc.setFontSize(8); doc.setTextColor('#9ca3af'); doc.setFont("helvetica", "bold");
+                doc.text(t.type === 'in' ? "BERHASIL DITERIMA" : "BERHASIL DIBAYARKAN", cardX + cardWidth / 2, y, { align: "center" });
+
+                y += 8; 
+                doc.setDrawColor('#e5e7eb'); doc.setLineWidth(0.5); doc.setLineDash([1, 1], 0);
+                doc.line(cardX + 10, y, cardX + cardWidth - 10, y);
+                doc.setLineDash([]);
+
+                y += 8;
+                doc.setTextColor(textColor); doc.setFontSize(7.5);
+                const labelX = cardX + 10; const valueX = cardX + cardWidth - 10;
+                const lineHeight = 5.5;
+
+                const details = [
+                    { label: "Tanggal", value: formatDateFull(t.date) },
+                    { label: "Kategori", value: t.category },
+                    { label: "ID Referensi", value: `TRX-${t.id.toString().slice(-8)}` }, 
+                ];
+
+                details.forEach(detail => {
+                    doc.setFont("helvetica", "normal"); doc.setTextColor('#9ca3af');
+                    doc.text(detail.label, labelX, y);
+                    doc.setFont("helvetica", "bold"); doc.setTextColor(textColor);
+                    doc.text(detail.value, valueX, y, { align: "right" });
+                    y += lineHeight;
+                });
+
+                y += 2;
+                const boxPadding = 3; const boxLabelSize = 6.5; const boxTextSize = 7.5;
+                doc.setFontSize(boxTextSize); doc.setFont("helvetica", "bold"); doc.setTextColor(textColor);
+                const descLines = doc.splitTextToSize(t.description, cardWidth - 20 - (boxPadding * 2));
+                const boxHeight = (descLines.length * (boxTextSize * 0.3527 * 1.3)) + 10; 
+
+                doc.setFillColor('#f9fafb'); doc.setDrawColor('#e5e7eb');
+                doc.roundedRect(labelX, y, cardWidth - 20, boxHeight, 2, 2, 'FD');
+                
+                doc.setFontSize(boxLabelSize); doc.setTextColor('#6b7280');
+                doc.text("Uraian / Catatan:", labelX + boxPadding, y + 5);
+                doc.setFontSize(boxTextSize); doc.setFont("helvetica", "bold"); doc.setTextColor(textColor);
+                doc.text(descLines, labelX + boxPadding, y + 10);
+
+                y += boxHeight + 8;
+
+                if (hasProof) {
+                    doc.setFontSize(7); doc.setTextColor('#9ca3af'); doc.setFont("helvetica", "italic");
+                    doc.text("Lampiran Bukti:", labelX, y);
+                    y += 2;
+                    try {
+                        const imgWidth = cardWidth - 20;
+                        const imgHeight = 40; 
+                        doc.addImage(t.proofPhoto, 'JPEG', labelX, y, imgWidth, imgHeight);
+                        y += imgHeight + 5;
+                    } catch (err) {
+                        console.log("Error adding proof image to PDF", err);
+                    }
+                }
+
+                const qrSize = 18;
+                const qrText = `PKK_ANAMBAS|ID:${t.id}|TGL:${t.date}|JML:${t.amount}|TIPE:${t.type}`;
+                try {
+                    const qrDataUrl = await generateQRCodeDataURL(qrText);
+                    doc.addImage(qrDataUrl, 'PNG', cardX + (cardWidth/2) - (qrSize/2), y, qrSize, qrSize);
+                } catch (e) {
+                    console.error("QR Gen Error", e);
+                }
+
+                y += qrSize + 5;
+                doc.setFontSize(6);
+                doc.setFont("helvetica", "italic"); doc.setTextColor('#9ca3af');
+                doc.text("Dokumen ini sah dan dihasilkan secara komputerisasi.", cardX + cardWidth / 2, y, { align: "center" });
+
+                doc.save(`Struk_Digital_${t.id}.pdf`);
+            };
+
+            const openMemberModal = (member = null) => {
+                if (member) { isEditMemberMode.value = true; memberForm.value = { ...member }; } 
+                else { isEditMemberMode.value = false; memberForm.value = { id: null, name: '', role: '', photo: null }; }
+                isMemberModalOpen.value = true;
+            };
+
+            const onFileChange = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                if (file.size > 2000000) { alert("Ukuran foto terlalu besar! Mohon gunakan foto di bawah 2MB."); return; }
+                const reader = new FileReader();
+                reader.onload = (e) => { memberForm.value.photo = e.target.result; };
+                reader.readAsDataURL(file);
+            };
+
+            const submitMember = () => {
+                if (isEditMemberMode.value) {
+                    const index = members.value.findIndex(m => m.id === memberForm.value.id);
+                    if (index !== -1) members.value[index] = { ...memberForm.value };
+                } else { members.value.push({ ...memberForm.value, id: Date.now() }); }
+                isMemberModalOpen.value = false;
+                saveData();
+            };
+
+            const deleteMember = () => {
+                if(confirm('Hapus anggota ini?')) {
+                    members.value = members.value.filter(m => m.id !== memberForm.value.id);
+                    isMemberModalOpen.value = false;
+                    saveData();
+                }
+            };
+
+            const saveData = () => {
+                localStorage.setItem('pkk_v3_trans', JSON.stringify(transactions.value));
+                localStorage.setItem('pkk_v3_members', JSON.stringify(members.value));
+            };
+            const loadData = () => {
+                const t = localStorage.getItem('pkk_v3_trans');
+                const m = localStorage.getItem('pkk_v3_members');
+                if (t) transactions.value = JSON.parse(t);
+                if (m) members.value = JSON.parse(m);
+            };
+
+            const exportExcel = () => {
+                const ws = XLSX.utils.json_to_sheet(transactionsForReport.value.map(t => ({
+                    Tanggal: t.date, Keterangan: t.description, Kategori: t.category,
+                    Masuk: t.type === 'in' ? t.amount : 0, Keluar: t.type === 'out' ? t.amount : 0
+                })));
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Laporan PKK");
+                XLSX.writeFile(wb, `Laporan_PKK_${reportStartDate.value}_${reportEndDate.value}.xlsx`);
+            };
+
+            const exportPDF = async () => {
+                const doc = new jsPDF();
+                const primaryColor = [13, 148, 136]; 
+                const secondaryColor = [240, 253, 250];
+                const textColor = [31, 41, 55]; 
+
+                let totalDebit = 0;
+                let totalKredit = 0;
+                const dataBody = transactionsForReport.value.map(t => {
+                    if (t.type === 'in') totalDebit += t.amount;
+                    if (t.type === 'out') totalKredit += t.amount;
+                    return [
+                        formatDate(t.date),
+                        t.description,
+                        t.category,
+                        t.type === 'in' ? formatNumber(t.amount) : '-',
+                        t.type === 'out' ? formatNumber(t.amount) : '-'
+                    ];
+                });
+                const saldoAkhir = totalDebit - totalKredit;
+
+                // Header Report
+                doc.setFillColor(...primaryColor);
+                doc.rect(0, 0, 8, 297, 'F'); 
+                doc.setFillColor(...secondaryColor);
+                doc.rect(8, 0, 202, 45, 'F');
+
+                try {
+                    const logoBase64 = await getBase64ImageFromURL(appLogo);
+                    doc.addImage(logoBase64, 'PNG', 15, 8, 25, 25);
+                } catch (e) { console.error("Logo fail", e); }
+
+                const textX = 45; 
+                doc.setFont("helvetica", "bold"); doc.setFontSize(18); doc.setTextColor(...primaryColor);
+                doc.text("LAPORAN KEUANGAN POKJA I", textX, 18);
+                doc.setFontSize(12); doc.setFont("helvetica", "normal"); doc.setTextColor(...textColor);
+                // UPDATED NAME
+                doc.text("TP-PKK KAB. KEP. ANAMBAS", textX, 25);
+                doc.setFontSize(9); doc.setTextColor(100);
+                doc.text("Sekretariat: Jalan Imam Bonjol No. 32, Tarempa", textX, 30);
+                doc.setDrawColor(...primaryColor); doc.setLineWidth(0.5);
+                doc.line(15, 38, 195, 38);
+                doc.setFontSize(9); doc.setTextColor(31, 41, 55);
+                doc.text(`Periode: ${formatDate(reportStartDate.value)} s/d ${formatDate(reportEndDate.value)}`, 195, 35, { align: 'right' });
+
+                doc.autoTable({
+                    head: [["Tanggal", "Uraian Transaksi", "Kategori", "Debit (Masuk)", "Kredit (Keluar)"]],
+                    body: dataBody,
+                    startY: 50,
+                    theme: 'plain',
+                    styles: {
+                        font: 'helvetica', fontSize: 9, cellPadding: 3,
+                        textColor: textColor, lineColor: [229, 231, 235], lineWidth: { bottom: 0.1 }
+                    },
+                    headStyles: {
+                        fillColor: primaryColor, textColor: 255, fontStyle: 'bold', halign: 'left'
+                    },
+                    columnStyles: {
+                        0: { cellWidth: 30 }, 1: { cellWidth: 'auto' }, 2: { cellWidth: 25 },
+                        3: { halign: 'right', cellWidth: 30, fontStyle: 'bold', textColor: [5, 150, 105] },
+                        4: { halign: 'right', cellWidth: 30, fontStyle: 'bold', textColor: [220, 38, 38] } 
+                    },
+                    margin: { left: 15, right: 15 }
+                });
+
+                let finalY = doc.lastAutoTable.finalY + 10;
+                if (finalY > 250) { doc.addPage(); finalY = 20; }
+
+                doc.setFillColor(...secondaryColor);
+                doc.roundedRect(110, finalY, 85, 38, 2, 2, 'F');
+                doc.setDrawColor(...primaryColor);
+                doc.setLineWidth(0.1);
+                doc.roundedRect(110, finalY, 85, 38, 2, 2, 'S');
+
+                const sumLabelX = 115; const sumValueX = 190; let currentY = finalY + 8;
+
+                doc.setFontSize(10); doc.setFont("helvetica", "normal"); doc.setTextColor(100);
+                doc.text("Total Pemasukan (Debit)", sumLabelX, currentY);
+                doc.setFont("helvetica", "bold"); doc.setTextColor(31, 41, 55);
+                doc.text(`Rp ${formatNumber(totalDebit)}`, sumValueX, currentY, { align: 'right' });
+
+                currentY += 8;
+                doc.setFont("helvetica", "normal"); doc.setTextColor(100);
+                doc.text("Total Pengeluaran (Kredit)", sumLabelX, currentY);
+                doc.setFont("helvetica", "bold"); doc.setTextColor(220, 38, 38);
+                doc.text(`(Rp ${formatNumber(totalKredit)})`, sumValueX, currentY, { align: 'right' });
+
+                currentY += 4; doc.setDrawColor(200); doc.line(sumLabelX, currentY, sumValueX, currentY);
+
+                currentY += 8;
+                doc.setFontSize(11); doc.setFont("helvetica", "bold"); doc.setTextColor(...primaryColor);
+                doc.text("SALDO AKHIR", sumLabelX, currentY);
+                doc.text(`Rp ${formatNumber(saldoAkhir)}`, sumValueX, currentY, { align: 'right' });
+
+                let sigY = finalY + 50;
+                if (sigY > 260) { doc.addPage(); sigY = 30; }
+
+                const todayStr = formatDate(new Date());
+                doc.setFontSize(10); doc.setFont("helvetica", "normal"); doc.setTextColor(31, 41, 55);
+                doc.text(`Anambas, ${todayStr}`, 160, sigY, { align: 'center' });
+
+                sigY += 10;
+                doc.text("Mengetahui,", 40, sigY, { align: 'center' });
+                doc.text("Dibuat Oleh,", 160, sigY, { align: 'center' });
+
+                sigY += 5;
+                doc.setFont("helvetica", "bold");
+                doc.text("Ketua Pokja I", 40, sigY, { align: 'center' });
+                doc.text("Bendahara", 160, sigY, { align: 'center' });
+
+                sigY += 25; 
+                doc.setLineWidth(0.5);
+                doc.line(20, sigY + 1, 60, sigY + 1);
+                doc.line(140, sigY + 1, 180, sigY + 1);
+                
+                doc.text("( .......................... )", 40, sigY, { align: 'center' });
+                doc.text("( .......................... )", 160, sigY, { align: 'center' });
+
+                const pageCount = doc.internal.getNumberOfPages();
+                for(let i = 1; i <= pageCount; i++) {
+                    doc.setPage(i);
+                    doc.setFontSize(8); doc.setTextColor(150);
+                    // COPYRIGHT UPDATE PDF WITH PHONE
+                    doc.text(`Halaman ${i} dari ${pageCount} | SiKEU POKJA I TP-PKK © 2025`, 105, 290, { align: 'center' });
+                }
+
+                doc.save(`Laporan_Keuangan_PKK_${reportStartDate.value}.pdf`);
+            };
+
+            onMounted(() => {
+                loadData();
+                loadPin(); // Load PIN from LocalStorage
+            });
+
+            return {
+                isAuthenticated, enteredPin, isPinError, isDefaultPin, handlePinInput, handleBackspace, logout,
+                // PIN Methods
+                isChangePinModalOpen, pinForm, openChangePinModal, updatePin,
+                
+                activeTab, isModalOpen, isMemberModalOpen, isEditMode, formType, form, isEditMemberMode, memberForm,
+                transactions, members, searchQuery, filterType, categoriesIn, categoriesOut,
+                saldo, pemasukanBulanIni, pengeluaranBulanIni, filteredTransactions, recentTransactions,
+                transactionsForReport, reportStartDate, reportEndDate,
+                formatCurrency, formatNumber, formatDate, formatDateFull, getMonthNameShort, getInitials,
+                openModal, openEditModal, closeModal, submitTransaction, deleteTransaction,
+                openMemberModal, onFileChange, submitMember, deleteMember, exportExcel, exportPDF, printReceipt,
+                handleProofUpload, removeProof, appLogo
+            };
+        }
+    }).mount('#app');
+</script>
+
+</body>
+</html>
+
